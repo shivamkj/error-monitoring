@@ -54,15 +54,6 @@ export default function ProjectSettingsPage() {
             {copied ? 'Copied!' : 'Copy'}
           </button>
         </div>
-
-        <div className="mt-4 p-3 bg-gray-50 rounded text-sm">
-          <p className="font-medium mb-2">Setup Example (@sentry/react):</p>
-          <pre className="text-xs text-gray-700 overflow-x-auto">{`import * as Sentry from "@sentry/react";
-
-Sentry.init({
-  dsn: "${project.dsn}",
-});`}</pre>
-        </div>
       </div>
 
       <div className="bg-white rounded-lg shadow border p-6">

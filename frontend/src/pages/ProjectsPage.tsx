@@ -62,6 +62,7 @@ export default function ProjectsPage() {
                 <option value="react">React</option>
                 <option value="node">Node.js</option>
                 <option value="python">Python</option>
+                <option value="flutter">Flutter</option>
                 <option value="go">Go</option>
               </select>
             </div>
