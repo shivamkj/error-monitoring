@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"log"
+	"net"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -12,6 +13,19 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/shivam/error-monitoring/backend/internal/processing"
 )
+
+func extractClientIP(r *http.Request) string {
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		if ip, _, err := net.SplitHostPort(xff); err == nil {
+			return ip
+		}
+		return xff
+	}
+	if ip, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+		return ip
+	}
+	return r.RemoteAddr
+}
 
 type Handler struct {
 	pool     *pgxpool.Pool
@@ -72,7 +86,7 @@ func (h *Handler) HandleEnvelope(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.pipeline.Process(r.Context(), projectID, event); err != nil {
+	if err := h.pipeline.Process(r.Context(), projectID, event, extractClientIP(r)); err != nil {
 		log.Printf("pipeline error: %v", err)
 		http.Error(w, `{"error":"internal error"}`, http.StatusInternalServerError)
 		return
@@ -123,7 +137,7 @@ func (h *Handler) HandleStore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.pipeline.Process(r.Context(), projectID, event); err != nil {
+	if err := h.pipeline.Process(r.Context(), projectID, event, extractClientIP(r)); err != nil {
 		log.Printf("pipeline error: %v", err)
 		http.Error(w, `{"error":"internal error"}`, http.StatusInternalServerError)
 		return

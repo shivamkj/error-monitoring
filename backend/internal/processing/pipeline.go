@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -21,7 +22,7 @@ func NewPipeline(pool *pgxpool.Pool) *Pipeline {
 	}
 }
 
-func (p *Pipeline) Process(ctx context.Context, projectID uuid.UUID, event *ParsedEvent) error {
+func (p *Pipeline) Process(ctx context.Context, projectID uuid.UUID, event *ParsedEvent, clientIP string) error {
 	normalized := Normalize(event)
 	fingerprint := GenerateFingerprint(event, normalized)
 	title := buildTitle(event)
@@ -36,7 +37,7 @@ func (p *Pipeline) Process(ctx context.Context, projectID uuid.UUID, event *Pars
 		return fmt.Errorf("update aggregates: %w", err)
 	}
 
-	if err := p.storeEvent(ctx, issueID, projectID, event); err != nil {
+	if err := p.storeEvent(ctx, issueID, projectID, event, clientIP); err != nil {
 		return fmt.Errorf("store event: %w", err)
 	}
 
@@ -63,7 +64,7 @@ func (p *Pipeline) upsertIssue(ctx context.Context, projectID uuid.UUID, fingerp
 	return issueID, err
 }
 
-func (p *Pipeline) storeEvent(ctx context.Context, issueID, projectID uuid.UUID, event *ParsedEvent) error {
+func (p *Pipeline) storeEvent(ctx context.Context, issueID, projectID uuid.UUID, event *ParsedEvent, clientIP string) error {
 	userData, _ := json.Marshal(event.User)
 	requestData, _ := json.Marshal(event.Request)
 	breadcrumbs, _ := json.Marshal(event.Breadcrumbs)
@@ -77,7 +78,10 @@ func (p *Pipeline) storeEvent(ctx context.Context, issueID, projectID uuid.UUID,
 	}
 
 	var ipArg interface{}
-	if ipAddress != "" {
+	if ipAddress == "{{auto}}" {
+		ipAddress = clientIP
+	}
+	if ipAddress != "" && net.ParseIP(ipAddress) != nil {
 		ipArg = ipAddress
 	}
 
