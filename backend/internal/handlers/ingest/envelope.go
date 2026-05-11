@@ -60,6 +60,13 @@ func (h *Handler) HandleEnvelope(w http.ResponseWriter, r *http.Request) {
 
 	event, err := processing.ParseEnvelope(body)
 	if err != nil {
+		if err == processing.ErrNoEventInEnvelope {
+			// Non-event envelopes (sessions, client_reports, etc.) — acknowledge without processing
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]string{"id": ""})
+			return
+		}
 		log.Printf("envelope parse error: %v", err)
 		http.Error(w, `{"error":"failed to parse envelope"}`, http.StatusBadRequest)
 		return
